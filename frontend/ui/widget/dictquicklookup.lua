@@ -58,6 +58,11 @@ local DictQuickLookup = InputContainer:new{
     refresh_callback = nil,
 }
 
+local highlight_strings = {
+    highlight =_("Highlight"),
+    unhighlight = _("Unhighlight"),
+}
+
 function DictQuickLookup:init()
     self:changeToDefaultDict()
     if Device:hasKeys() then
@@ -299,7 +304,7 @@ function DictQuickLookup:update()
                                             })
                                         else
                                             UIManager:show(InfoMessage:new{
-                                                text = _("Saving Wikipedia page failed."),
+                                                text = _("Saving Wikipedia page failed or canceled."),
                                             })
                                         end
                                     end)
@@ -330,7 +335,7 @@ function DictQuickLookup:update()
                     text = self:getHighlightText(),
                     enabled = true,
                     callback = function()
-                        if self:getHighlightText() == "Highlight" then
+                        if self:getHighlightText() == highlight_strings.highlight then
                             self.ui:handleEvent(Event:new("Highlight"))
                         else
                             self.ui:handleEvent(Event:new("Unhighlight"))
@@ -362,12 +367,17 @@ function DictQuickLookup:update()
                 {
                     -- if more than one language, enable it and display "current lang > next lang"
                     -- otherwise, just display current lang
-                    text = self.is_wiki and ( #self.wiki_languages > 1 and self.wiki_languages[1].." > "..self.wiki_languages[2] or self.wiki_languages[1] ) or "-",
-                    enabled = self.is_wiki and #self.wiki_languages > 1,
+                    text = self.is_wiki and ( #self.wiki_languages > 1 and self.wiki_languages[1].." > "..self.wiki_languages[2] or self.wiki_languages[1] ) or _("Follow Link"),
+                    enabled = (self.is_wiki and #self.wiki_languages > 1) or self.selected_link ~= nil,
                     callback = function()
-                        self:resyncWikiLanguages(true) -- rotate & resync them
-                        UIManager:close(self)
-                        self:lookupWikipedia()
+                        if self.is_wiki then
+                            self:resyncWikiLanguages(true) -- rotate & resync them
+                            UIManager:close(self)
+                            self:lookupWikipedia()
+                        else
+                            self:onClose()
+                            self.ui.link:onGotoLink(self.selected_link)
+                        end
                     end,
                 },
                 {
@@ -481,11 +491,11 @@ end
 function DictQuickLookup:getHighlightText()
     local item = self:getHighlightedItem()
     if not item then
-        return _("Highlight"), false
+        return highlight_strings.highlight, false
     elseif self.ui.bookmark:isBookmarkAdded(item) then
-        return _("Unhighlight"), false
+        return highlight_strings.unhighlight, false
     else
-        return _("Highlight"), true
+        return highlight_strings.highlight, true
     end
 end
 
